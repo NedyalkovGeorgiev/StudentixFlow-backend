@@ -1,0 +1,16 @@
+ktor:
+    application:
+        modules:
+            - com.university.studentixflow.ApplicationKt.module
+    deployment:
+        port: 8080
+jwt:
+  domain: "https://jwt-provider-domain/"
+  audience: "jwt-audience"
+  realm: "ktor sample app"
+  secret: "your_super_secret_key_change_this"
+
+db:
+  url: "jdbc:mysql://localhost:3306/studentixflow"
+  user: "education_user"
+  pass: "education_user"
