@@ -24,6 +24,7 @@ dependencies {
     implementation(libs.exposed.dao)
     implementation(libs.mysql.connector)
     implementation(libs.hikaricp)
+    implementation(libs.bcrypt)
     implementation(libs.ktor.server.resources)
     implementation(libs.ktor.server.cors)
     implementation(libs.ktor.server.auth.jwt)

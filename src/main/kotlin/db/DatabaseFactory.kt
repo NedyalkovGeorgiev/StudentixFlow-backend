@@ -32,7 +32,8 @@ object DatabaseFactory {
 
 
         transaction(database) {
-            SchemaUtils.create(Users, Courses, Enrollments, Tests)
+            SchemaUtils.create(Users, Courses, CourseSections, Enrollments, Tests, Materials, Tasks, TestResults,
+                TaskSubmissions)
         }
     }
 

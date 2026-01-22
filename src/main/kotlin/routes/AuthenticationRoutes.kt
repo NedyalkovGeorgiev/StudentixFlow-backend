@@ -13,13 +13,6 @@ fun Route.authenticationRoutes(userRepository: UserRepository) {
     post("/register") {
         val request = call.receive<RegisterRequest>()
 
-        if (request.role.uppercase() !in validRoles) {
-            return@post call.respond(
-                HttpStatusCode.BadRequest,
-                mapOf("error" to "Invalid role. Must be STUDENT, TEACHER, or ADMIN")
-            )
-        }
-
         try {
             userRepository.registerUser(request)
 
@@ -27,11 +20,13 @@ fun Route.authenticationRoutes(userRepository: UserRepository) {
                 HttpStatusCode.Created,
                 mapOf("message" to "User registered successfully")
             )
+            return@post
         } catch (e: Exception) {
             call.respond(
                 HttpStatusCode.Conflict,
                 mapOf("error" to "Email already exists")
             )
+            return@post
         }
     }
 }

@@ -11,7 +11,7 @@ class UserRepository {
             it[email] = request.email
             it[password] = request.password
             it[fullName] = request.fullName
-            it[role] = request.role.uppercase()
+            it[role] = request.role
         }
     }
 }
