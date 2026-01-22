@@ -26,6 +26,7 @@ data class UserResponse(
 )
 
 @Serializable
-data class TokenResponse(
+data class AuthResponse(
+    val user:UserResponse,
     val token: String
 )
