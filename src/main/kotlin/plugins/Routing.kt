@@ -1,7 +1,9 @@
 package com.university.studentixflow.plugins
 
+import com.university.studentixflow.repository.CourseRepository
 import com.university.studentixflow.repository.UserRepository
 import com.university.studentixflow.routes.authenticationRoutes
+import com.university.studentixflow.routes.courseRoutes
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.BadRequestException
@@ -26,12 +28,14 @@ fun Application.configureRouting() {
     install(Resources)
 
     val userRepository = UserRepository()
+    val courseRepository = CourseRepository()
 
     routing {
         get("/") {
-            call.respondText("StudentixFlow API is Online")
+            call.respondText("StudentixFlow API is running!")
         }
 
         authenticationRoutes(userRepository)
+        courseRoutes(courseRepository)
     }
 }
