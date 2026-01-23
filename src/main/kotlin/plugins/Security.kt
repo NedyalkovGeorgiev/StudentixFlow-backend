@@ -24,7 +24,8 @@ fun Application.configureSecurity() {
             )
             validate { credential ->
                 val containsAudience = credential.payload.audience.contains(jwtAudience)
-                val hasRole = credential.payload.getClaim("role").asString() != null
+                val roleClaim = credential.payload.getClaim("role").asString()
+                val hasRole = roleClaim != null
 
                 if (containsAudience && hasRole) {
                     JWTPrincipal(credential.payload)

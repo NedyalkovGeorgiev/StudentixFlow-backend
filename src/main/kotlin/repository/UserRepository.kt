@@ -3,8 +3,19 @@ package com.university.studentixflow.repository
 import com.university.studentixflow.db.DatabaseFactory.dbQuery
 import com.university.studentixflow.db.Users
 import com.university.studentixflow.models.RegisterRequest
+import com.university.studentixflow.models.UserRole
 import com.university.studentixflow.utils.PasswordHasher
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
+
+data class UserData(
+    val id: Int,
+    val email: String,
+    val role: UserRole,
+    val fullName: String,
+    val isActive: Boolean,
+    val hashedPassword: String
+)
 
 class UserRepository {
     suspend fun registerUser(request: RegisterRequest) = dbQuery {
@@ -18,5 +29,24 @@ class UserRepository {
             it[role] = request.role
             it[isActive] = true
         }
+    }
+
+    suspend fun findUserForLogin(email: String): UserData? = dbQuery {
+        val result = Users.selectAll().where { Users.email eq email }.singleOrNull()
+
+        result?.let {
+            UserData(
+                id = it[Users.id].value,
+                email = it[Users.email],
+                role = it[Users.role],
+                fullName = it[Users.fullName],
+                isActive = it[Users.isActive],
+                hashedPassword = it[Users.password]
+            )
+        }
+    }
+
+    fun verifyPassword(plainPassword: String, hashedPassword: String): Boolean {
+        return PasswordHasher.verifyPassword(plainPassword, hashedPassword)
     }
 }
