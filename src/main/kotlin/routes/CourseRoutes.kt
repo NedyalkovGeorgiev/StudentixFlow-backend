@@ -1,6 +1,8 @@
 package com.university.studentixflow.routes
 
 import com.university.studentixflow.models.CourseRequest
+import com.university.studentixflow.models.CourseWithContentResponse
+import com.university.studentixflow.repository.CourseContentRepository
 import com.university.studentixflow.repository.CourseRepository
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
@@ -13,7 +15,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 
-fun Route.courseRoutes(courseRepository: CourseRepository) {
+fun Route.courseRoutes(courseRepository: CourseRepository, courseContentRepository: CourseContentRepository) {
     authenticate("auth-jwt") {
         post("/courses") {
             val principal = call.principal<JWTPrincipal>()
@@ -84,23 +86,36 @@ fun Route.courseRoutes(courseRepository: CourseRepository) {
             }
 
             val isOwner = course.teacherId == userId
+            val canView = when (role) {
+                "ADMIN" -> true
+                "TEACHER" -> isOwner
+                "STUDENT" -> {
+                    // Check for enrollment to be implemented
+                    false
+                }
+                else -> false
+            }
 
-            if (role == "ADMIN") {
-                call.respond(HttpStatusCode.OK, course)
+            if (!canView) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied to this course detail"))
                 return@get
             }
 
-            if (role == "TEACHER" && isOwner) {
-                call.respond(HttpStatusCode.OK, course)
-                return@get
-            }
+            val sectionsWithContent = courseContentRepository.getCourseContent(id)
 
-            if (role == "STUDENT") {
-                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Students can only view enrolled courses (via GET /courses)"))
-                return@get
-            }
+            val response = CourseWithContentResponse(
+                id = course.id,
+                title = course.title,
+                description = course.description,
+                teacherId = course.teacherId,
+                teacherName = course.teacherName,
+                isActive = course.isActive,
+                startDate = course.startDate,
+                durationWeeks = course.durationWeeks,
+                sections = sectionsWithContent
+            )
 
-            call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied to this course detail"))
+            call.respond(HttpStatusCode.OK, response)
         }
 
         delete("/courses/{id}") {

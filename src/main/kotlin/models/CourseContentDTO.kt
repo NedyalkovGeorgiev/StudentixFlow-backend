@@ -64,3 +64,29 @@ data class MaterialResponse(
     val type: MaterialType,
     val isVisible: Boolean
 )
+
+@Serializable
+data class SectionWithContentResponse(
+    val id: Int,
+    val courseId: Int,
+    val weekNumber: Int,
+    val title: String,
+    val description: String,
+    val url: String?,
+    val sortOrder: Int,
+    val tasks: List<TaskResponse>,
+    val materials: List<MaterialResponse>
+)
+
+@Serializable
+data class CourseWithContentResponse(
+    val id: Int,
+    val title: String,
+    val description: String,
+    val teacherId: Int,
+    val teacherName: String,
+    val isActive: Boolean,
+    val startDate: Long,
+    val durationWeeks: Int,
+    val sections: List<SectionWithContentResponse>
+)

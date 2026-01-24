@@ -40,7 +40,7 @@ fun Application.configureRouting() {
         }
 
         authenticationRoutes(userRepository)
-        courseRoutes(courseRepository)
+        courseRoutes(courseRepository, courseContentRepository)
         userRoutes(userRepository)
         courseContentRoutes(courseRepository, courseContentRepository)
     }
