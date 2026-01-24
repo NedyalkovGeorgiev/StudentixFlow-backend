@@ -43,12 +43,53 @@ fun Route.authenticationRoutes(userRepository: UserRepository) {
             return@post
         }
 
+        // Validate email format
+        val emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$".toRegex()
+        if (!emailRegex.matches(request.email)) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf("error" to "Invalid email format")
+            )
+            return@post
+        }
+
+        // Validate password requirements
+        val password = request.password
+        if (password.length < 8) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf("error" to "Password must be at least 8 characters long")
+            )
+            return@post
+        }
+        if (!password.any { it.isUpperCase() }) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf("error" to "Password must contain at least 1 uppercase letter (A-Z)")
+            )
+            return@post
+        }
+        if (!password.any { it.isLowerCase() }) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf("error" to "Password must contain at least 1 lowercase letter (a-z)")
+            )
+            return@post
+        }
+        if (!password.any { it.isDigit() }) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf("error" to "Password must contain at least 1 digit (0-9)")
+            )
+            return@post
+        }
+
         try {
             userRepository.registerUser(request)
 
             call.respond(
                 HttpStatusCode.Created,
-                mapOf("message" to "User registered successfully")
+                mapOf("message" to "Registration submitted successfully. Waiting for admin approval.")
             )
         } catch (e: Exception) {
             call.respond(

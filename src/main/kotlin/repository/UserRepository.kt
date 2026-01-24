@@ -31,6 +31,7 @@ class UserRepository {
             it[password] = hashedPassword
             it[fullName] = request.fullName
             it[role] = request.role
+            it[isActive] = false
         }
     }
 
