@@ -9,7 +9,7 @@ object Users : IntIdTable("users") {
     val password = varchar("password", 255)
     val fullName = varchar("full_name", 150)
     val role = enumerationByName("role", 20, UserRole::class)
-    val isActive = bool("is_active").default(true)
+    val isActive = bool("is_active").default(false)
 }
 
 object Courses : IntIdTable("courses") {

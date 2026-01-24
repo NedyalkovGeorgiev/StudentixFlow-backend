@@ -6,6 +6,7 @@ import com.university.studentixflow.models.AuthResponse
 import com.university.studentixflow.models.LoginRequest
 import com.university.studentixflow.models.RegisterRequest
 import com.university.studentixflow.models.UserResponse
+import com.university.studentixflow.models.UserRole
 import com.university.studentixflow.repository.UserData
 import com.university.studentixflow.repository.UserRepository
 import io.ktor.http.*
@@ -37,6 +38,11 @@ fun Route.authenticationRoutes(userRepository: UserRepository) {
     post("/register") {
         val request = call.receive<RegisterRequest>()
 
+        if (request.role == UserRole.ADMIN) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Cannot register as Administrator"))
+            return@post
+        }
+
         try {
             userRepository.registerUser(request)
 
@@ -57,8 +63,13 @@ fun Route.authenticationRoutes(userRepository: UserRepository) {
 
         val user = userRepository.findUserForLogin(request.email)
 
-        if (user == null || !user.isActive) {
-            call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid credentials or user is inactive"))
+        if (user == null) {
+            call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid credentials"))
+            return@post
+        }
+
+        if (!user.isActive) {
+            call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Account is inactive. Waiting for admin approval."))
             return@post
         }
 

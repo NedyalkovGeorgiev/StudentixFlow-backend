@@ -2,6 +2,7 @@ package com.university.studentixflow.repository
 
 import com.university.studentixflow.db.DatabaseFactory.dbQuery
 import com.university.studentixflow.db.Users
+import com.university.studentixflow.models.AdminUserUpdateRequest
 import com.university.studentixflow.models.RegisterRequest
 import com.university.studentixflow.models.UserRole
 import com.university.studentixflow.utils.PasswordHasher
@@ -9,7 +10,7 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
 
 data class UserData(
     val id: Int,
@@ -30,7 +31,6 @@ class UserRepository {
             it[password] = hashedPassword
             it[fullName] = request.fullName
             it[role] = request.role
-            it[isActive] = true
         }
     }
 
@@ -72,5 +72,33 @@ class UserRepository {
             isActive = row[Users.isActive],
             hashedPassword = row[Users.password]
         )
+    }
+
+    suspend fun activateUser(userId: Int): Boolean = dbQuery {
+        Users.update({ Users.id eq userId }) {
+            it[isActive] = true
+        } > 0
+    }
+
+    suspend fun updateUser(userId: Int, request: AdminUserUpdateRequest): Boolean = dbQuery {
+        request.email?.let { newEmail ->
+            val existingUser = Users.selectAll().where { (Users.email eq newEmail) and (Users.id neq userId)}
+                .singleOrNull()
+
+            if (existingUser != null) {
+                throw IllegalArgumentException("Email address already taken by another user.")
+            }
+        }
+
+        Users.update({ Users.id eq userId }) {
+            request.fullName?.let { fullName -> it[Users.fullName] = fullName }
+            request.email?.let { email -> it[Users.email] = email }
+            request.role?.let { role -> it[Users.role] = role }
+            request.isActive?.let { isActive -> it[Users.isActive] = isActive }
+        } > 0
+    }
+
+    suspend fun getUserIsActiveStatus(userId: Int): Boolean? = dbQuery {
+        Users.select(Users.isActive).where { Users.id eq userId }.singleOrNull()?.get(Users.isActive)
     }
 }
