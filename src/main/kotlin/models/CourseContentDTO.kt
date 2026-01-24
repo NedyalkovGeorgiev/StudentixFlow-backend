@@ -16,6 +16,7 @@ data class SectionRequest(
     val weekNumber: Int,
     val title: String,
     val description: String,
+    val url: String? = null,
     val sortOrder: Int = 0
 )
 
@@ -26,6 +27,7 @@ data class SectionResponse(
     val weekNumber: Int,
     val title: String,
     val description: String,
+    val url: String?,
     val sortOrder: Int
 )
 

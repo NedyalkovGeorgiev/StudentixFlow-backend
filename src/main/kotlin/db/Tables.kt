@@ -37,6 +37,7 @@ object CourseSections : IntIdTable("course_sections") {
     val weekNumber = integer("week_number")
     val title = varchar("title", 255)
     val description = varchar("description", 1000)
+    val url = varchar("url", 500).nullable()
     val sortOrder = integer("sort_order").default(0)
 }
 
