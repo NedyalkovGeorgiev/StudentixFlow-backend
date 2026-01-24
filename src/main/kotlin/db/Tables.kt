@@ -1,5 +1,6 @@
 package com.university.studentixflow.db
 
+import com.university.studentixflow.models.MaterialType
 import com.university.studentixflow.models.UserRole
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
@@ -64,7 +65,7 @@ object Materials: IntIdTable("materials") {
     val sectionId = reference("section_id", CourseSections, onDelete = ReferenceOption.CASCADE)
     val title = varchar("title", 255)
     val url = varchar("url", 500)
-    val type = varchar("type", 50)
+    val type = enumerationByName("type", 50, MaterialType::class)
     val isVisible = bool("is_visible").default(false)
 }
 
