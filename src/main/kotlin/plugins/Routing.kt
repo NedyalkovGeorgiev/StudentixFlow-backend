@@ -4,6 +4,7 @@ import com.university.studentixflow.repository.CourseRepository
 import com.university.studentixflow.repository.UserRepository
 import com.university.studentixflow.routes.authenticationRoutes
 import com.university.studentixflow.routes.courseRoutes
+import com.university.studentixflow.routes.userRoutes
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.BadRequestException
@@ -37,5 +38,6 @@ fun Application.configureRouting() {
 
         authenticationRoutes(userRepository)
         courseRoutes(courseRepository)
+        userRoutes(userRepository)
     }
 }

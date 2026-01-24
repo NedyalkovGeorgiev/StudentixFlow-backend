@@ -5,8 +5,11 @@ import com.university.studentixflow.db.Users
 import com.university.studentixflow.models.RegisterRequest
 import com.university.studentixflow.models.UserRole
 import com.university.studentixflow.utils.PasswordHasher
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 
 data class UserData(
     val id: Int,
@@ -48,5 +51,26 @@ class UserRepository {
 
     fun verifyPassword(plainPassword: String, hashedPassword: String): Boolean {
         return PasswordHasher.verifyPassword(plainPassword, hashedPassword)
+    }
+
+    suspend fun getAllUsers(): List<UserData> = dbQuery {
+        Users.selectAll().map { mapUserRowToUserData(it) }
+    }
+
+    suspend fun deactivateUser(userId: Int): Boolean = dbQuery {
+        Users.update({ Users.id eq userId }) {
+            it[isActive] = false
+        } > 0
+    }
+
+    private fun mapUserRowToUserData(row: ResultRow): UserData {
+        return UserData(
+            id = row[Users.id].value,
+            email = row[Users.email],
+            role = row[Users.role],
+            fullName = row[Users.fullName],
+            isActive = row[Users.isActive],
+            hashedPassword = row[Users.password]
+        )
     }
 }
