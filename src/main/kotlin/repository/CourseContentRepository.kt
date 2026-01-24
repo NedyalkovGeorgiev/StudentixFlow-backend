@@ -16,6 +16,9 @@ import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
 import com.university.studentixflow.models.MaterialResponse
 import com.university.studentixflow.models.TaskResponse
+import com.university.studentixflow.models.TestRequest
+import kotlinx.serialization.json.Json
+import com.university.studentixflow.db.Tests
 
 class CourseContentRepository {
     suspend fun createSection(courseId: Int, request: SectionRequest): Int = dbQuery {
@@ -116,4 +119,13 @@ class CourseContentRepository {
         type = this[Materials.type],
         isVisible = this[Materials.isVisible]
     )
+
+    suspend fun createTest(sectionId: Int, request: TestRequest): Int = dbQuery {
+        Tests.insertAndGetId {
+            it[this.sectionId] = sectionId
+            it[title] = request.title
+            it[maxScore] = request.maxScore
+            it[contentJson] = Json.encodeToString(request.questions)
+        }.value
+    }
 }

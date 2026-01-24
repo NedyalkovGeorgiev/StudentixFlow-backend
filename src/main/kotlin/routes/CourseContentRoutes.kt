@@ -3,6 +3,7 @@ package com.university.studentixflow.routes
 import com.university.studentixflow.models.MaterialRequest
 import com.university.studentixflow.models.SectionRequest
 import com.university.studentixflow.models.TaskRequest
+import com.university.studentixflow.models.TestRequest
 import com.university.studentixflow.repository.CourseContentRepository
 import com.university.studentixflow.repository.CourseRepository
 import io.ktor.http.HttpStatusCode
@@ -93,6 +94,32 @@ fun Route.courseContentRoutes(
             try {
                 val request = call.receive<MaterialRequest>()
                 val id = courseContentRepository.createMaterial(sectionId, request)
+                call.respond(HttpStatusCode.Created, mapOf("id" to id))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to e.message))
+            }
+        }
+
+        post("/sections/{sectionId}/tests") {
+            val sectionId = call.parameters["sectionId"]?.toIntOrNull()
+            val principal = call.principal<JWTPrincipal>()
+            val userId = principal?.payload?.subject?.toIntOrNull()
+            val role = principal?.payload?.getClaim("role")?.asString()
+
+            if (sectionId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid ID or token"))
+                return@post
+            }
+
+            val isOwner = courseContentRepository.isSectionOwner(sectionId, userId)
+            if (role != "ADMIN" && !isOwner) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+                return@post
+            }
+
+            try {
+                val request = call.receive<TestRequest>()
+                val id = courseContentRepository.createTest(sectionId, request)
                 call.respond(HttpStatusCode.Created, mapOf("id" to id))
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to e.message))
