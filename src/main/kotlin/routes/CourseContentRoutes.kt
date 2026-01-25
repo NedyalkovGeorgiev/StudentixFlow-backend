@@ -1,9 +1,11 @@
 package com.university.studentixflow.routes
 
+import com.auth0.jwt.JWT
 import com.university.studentixflow.models.MaterialRequest
 import com.university.studentixflow.models.SectionRequest
 import com.university.studentixflow.models.TaskRequest
 import com.university.studentixflow.models.TestRequest
+import com.university.studentixflow.models.TestSubmissionRequest
 import com.university.studentixflow.repository.CourseContentRepository
 import com.university.studentixflow.repository.CourseRepository
 import io.ktor.http.HttpStatusCode
@@ -14,6 +16,7 @@ import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.response.respond
+import java.lang.IllegalArgumentException
 
 
 fun Route.courseContentRoutes(
@@ -123,6 +126,28 @@ fun Route.courseContentRoutes(
                 call.respond(HttpStatusCode.Created, mapOf("id" to id))
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to e.message))
+            }
+        }
+
+        post("/tests/{id}/submit") {
+            val testId = call.parameters["id"]?.toIntOrNull()
+            val principal = call.principal<JWTPrincipal>()
+            val userId = principal?.payload?.subject?.toIntOrNull()
+            val role = principal?.payload?.getClaim("role")?.asString()
+
+            if (testId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid test ID or token"))
+                return@post
+            }
+            // TODO: Check if student is enrolled
+            try {
+                val request = call.receive<TestSubmissionRequest>()
+                val score = courseContentRepository.submitTest(testId, userId, request)
+                call.respond(HttpStatusCode.OK, mapOf("message" to "Test submitted successfully", "score" to score.toString()))
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to e.message))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid submission format", "details" to e.message))
             }
         }
     }
