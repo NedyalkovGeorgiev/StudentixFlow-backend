@@ -139,7 +139,19 @@ fun Route.courseContentRoutes(
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid test ID or token"))
                 return@post
             }
-            // TODO: Check if student is enrolled
+
+            val courseId = courseRepository.findCourseIdForTest(testId)
+            if (courseId == null) {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Test not found or is not part of any course"))
+                return@post
+            }
+
+            val isEnrolled = courseRepository.isStudentEnrolled(courseId, userId)
+            if (!isEnrolled) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "You are not enrolled in the course for this test"))
+                return@post
+            }
+
             try {
                 val request = call.receive<TestSubmissionRequest>()
                 val score = courseContentRepository.submitTest(testId, userId, request)
