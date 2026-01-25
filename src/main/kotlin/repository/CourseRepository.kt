@@ -107,24 +107,6 @@ class CourseRepository {
         )
     }
 
-    suspend fun isStudentEnrolled(courseId: Int, studentId: Int): Boolean = dbQuery {
-        Enrollments.selectAll().where { (Enrollments.courseId eq courseId) and (Enrollments.studentId eq studentId) }
-            .count() > 0
-    }
-}
-
-data class ParticipantInfo(
-    val id: Int,
-    val email: String,
-    val fullName: String,
-    val role: UserRole
-)
-
-data class CourseParticipants(
-    val teacher: ParticipantInfo,
-    val students: List<ParticipantInfo>
-)
-
     suspend fun enrollStudent(courseId: Int, studentId: Int) = dbQuery {
         val course = Courses.selectAll().where {
             (Courses.id eq courseId) and (Courses.isActive eq true) }.singleOrNull()
@@ -160,3 +142,15 @@ data class CourseParticipants(
             ?.value
     }
 }
+
+data class ParticipantInfo(
+    val id: Int,
+    val email: String,
+    val fullName: String,
+    val role: UserRole
+)
+
+data class CourseParticipants(
+    val teacher: ParticipantInfo,
+    val students: List<ParticipantInfo>
+)
