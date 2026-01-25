@@ -1,9 +1,11 @@
 package com.university.studentixflow.repository
 
+import com.university.studentixflow.db.CourseSections
 import com.university.studentixflow.db.Courses
 import com.university.studentixflow.models.CourseRequest
 import com.university.studentixflow.db.DatabaseFactory.dbQuery
 import com.university.studentixflow.db.Enrollments
+import com.university.studentixflow.db.Tests
 import com.university.studentixflow.db.Users
 import com.university.studentixflow.models.CourseResponse
 import com.university.studentixflow.models.UserRole
@@ -13,6 +15,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.insert
 
 class CourseRepository {
     // Helper function to map ResultRow to CourseResponse
@@ -121,3 +124,39 @@ data class CourseParticipants(
     val teacher: ParticipantInfo,
     val students: List<ParticipantInfo>
 )
+
+    suspend fun enrollStudent(courseId: Int, studentId: Int) = dbQuery {
+        val course = Courses.selectAll().where {
+            (Courses.id eq courseId) and (Courses.isActive eq true) }.singleOrNull()
+                ?: throw IllegalArgumentException("Course not found or is not active")
+
+            val existingEnrollment = Enrollments.selectAll().where {
+                (Enrollments.studentId eq studentId) and (Enrollments.courseId eq courseId)
+        }.singleOrNull()
+
+        if (existingEnrollment != null) {
+            throw IllegalStateException("You are already enrolled in this course")
+        }
+
+        Enrollments.insert {
+            it[this.studentId] = studentId
+            it[this.courseId] = courseId
+            it[enrolledAt] = System.currentTimeMillis()
+        }
+    }
+
+    suspend fun isStudentEnrolled(courseId: Int, studentId: Int): Boolean = dbQuery {
+        Enrollments.selectAll().where {
+            (Enrollments.courseId eq courseId) and (Enrollments.studentId eq studentId)
+        }.count() > 0
+    }
+
+    suspend fun findCourseIdForTest(testId: Int): Int? = dbQuery {
+        (Tests innerJoin CourseSections innerJoin Courses)
+            .select(Courses.id)
+            .where { Tests.id eq testId }
+            .singleOrNull()
+            ?.get(Courses.id)
+            ?.value
+    }
+}

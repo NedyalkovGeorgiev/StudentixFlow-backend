@@ -6,6 +6,7 @@ import com.university.studentixflow.models.SectionRequest
 import com.university.studentixflow.db.DatabaseFactory.dbQuery
 import com.university.studentixflow.db.Materials
 import com.university.studentixflow.db.Tasks
+import com.university.studentixflow.db.TestResults
 import com.university.studentixflow.models.MaterialRequest
 import com.university.studentixflow.models.SectionResponse
 import com.university.studentixflow.models.SectionWithContentResponse
@@ -19,6 +20,9 @@ import com.university.studentixflow.models.TaskResponse
 import com.university.studentixflow.models.TestRequest
 import kotlinx.serialization.json.Json
 import com.university.studentixflow.db.Tests
+import com.university.studentixflow.models.Question
+import com.university.studentixflow.models.TestSubmissionRequest
+import org.jetbrains.exposed.sql.insert
 
 class CourseContentRepository {
     suspend fun createSection(courseId: Int, request: SectionRequest): Int = dbQuery {
@@ -127,5 +131,48 @@ class CourseContentRepository {
             it[maxScore] = request.maxScore
             it[contentJson] = Json.encodeToString(request.questions)
         }.value
+    }
+
+    suspend fun submitTest(
+        testId: Int, studentId: Int, submissionRequest: TestSubmissionRequest
+    ): Int = dbQuery {
+        val existingResult = TestResults.selectAll().where {
+            (TestResults.studentId eq studentId) and (TestResults.testId eq testId)
+        }.singleOrNull()
+
+        if (existingResult != null) {
+            throw IllegalStateException("You have already submitted this test.")
+        }
+
+        val testRow = Tests.selectAll().where { Tests.id eq testId }.singleOrNull()
+            ?: throw IllegalArgumentException("Test not found")
+
+        val questions = Json.decodeFromString<List<Question>>(testRow[Tests.contentJson])
+        val maxScore = testRow[Tests.maxScore]
+
+        var correctAnswerCount = 0
+        val studentAnswers = submissionRequest.answers.associateBy { it.questionIndex }
+
+        for ((index, question) in questions.withIndex()) {
+            val studentAnswer = studentAnswers[index]
+            if (studentAnswer != null && studentAnswer.chosenOptionIndex == question.correctOptionIndex) {
+                correctAnswerCount++
+            }
+        }
+
+        val score = if(questions.isNotEmpty()) {
+            (correctAnswerCount.toDouble() / questions.size * maxScore).toInt()
+        } else {
+            0
+        }
+
+        TestResults.insert {
+            it[this.testId] = testId
+            it[this.studentId] = studentId
+            it[this.score] = score
+            it[attemptedAt] = System.currentTimeMillis()
+        }
+
+        score
     }
 }

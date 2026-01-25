@@ -1,9 +1,11 @@
 package com.university.studentixflow.routes
 
+import com.auth0.jwt.JWT
 import com.university.studentixflow.models.MaterialRequest
 import com.university.studentixflow.models.SectionRequest
 import com.university.studentixflow.models.TaskRequest
 import com.university.studentixflow.models.TestRequest
+import com.university.studentixflow.models.TestSubmissionRequest
 import com.university.studentixflow.repository.CourseContentRepository
 import com.university.studentixflow.repository.CourseRepository
 import com.university.studentixflow.routes.RouteHelpers.getUserId
@@ -15,6 +17,7 @@ import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import io.ktor.server.response.respond
+import java.lang.IllegalArgumentException
 
 
 fun Route.courseContentRoutes(
@@ -132,6 +135,42 @@ fun Route.courseContentRoutes(
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid test data: ${e.message}"))
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to create test"))
+            }
+        }
+
+        post("/tests/{id}/submit") {
+            val testId = call.parameters["id"]?.toIntOrNull()
+            val principal = call.principal<JWTPrincipal>()
+            val userId = principal?.payload?.subject?.toIntOrNull()
+            val role = principal?.payload?.getClaim("role")?.asString()
+
+            if (testId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid test ID or token"))
+                return@post
+            }
+
+            val courseId = courseRepository.findCourseIdForTest(testId)
+            if (courseId == null) {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Test not found or is not part of any course"))
+                return@post
+            }
+
+            val isEnrolled = courseRepository.isStudentEnrolled(courseId, userId)
+            if (!isEnrolled) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "You are not enrolled in the course for this test"))
+                return@post
+            }
+
+            try {
+                val request = call.receive<TestSubmissionRequest>()
+                val score = courseContentRepository.submitTest(testId, userId, request)
+                call.respond(HttpStatusCode.OK, mapOf("message" to "Test submitted successfully", "score" to score.toString()))
+            } catch (e: IllegalStateException) {
+                call.respond(HttpStatusCode.Conflict, mapOf("error" to e.message))
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to e.message))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid submission format", "details" to e.message))
             }
         }
     }

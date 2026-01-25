@@ -20,3 +20,14 @@ data class TestRequest(
     val maxScore: Int,
     val questions: List<Question>
 )
+
+@Serializable
+data class StudentAnswer(
+    val questionIndex: Int,
+    val chosenOptionIndex: Int
+)
+
+@Serializable
+data class TestSubmissionRequest(
+    val answers: List<StudentAnswer>
+)

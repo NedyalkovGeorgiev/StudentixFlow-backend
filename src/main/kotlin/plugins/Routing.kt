@@ -2,11 +2,13 @@ package com.university.studentixflow.plugins
 
 import com.university.studentixflow.repository.CourseContentRepository
 import com.university.studentixflow.repository.CourseRepository
+import com.university.studentixflow.repository.TestRepository
 import com.university.studentixflow.repository.UserRepository
 import com.university.studentixflow.routes.authenticationRoutes
 import com.university.studentixflow.routes.courseContentRoutes
 import com.university.studentixflow.routes.courseRoutes
 import com.university.studentixflow.routes.reportRoutes
+import com.university.studentixflow.routes.testRoutes
 import com.university.studentixflow.routes.userRoutes
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -34,6 +36,7 @@ fun Application.configureRouting() {
     val userRepository = UserRepository()
     val courseRepository = CourseRepository()
     val courseContentRepository = CourseContentRepository()
+    val testRepository = TestRepository()
 
     routing {
         get("/") {
@@ -45,5 +48,6 @@ fun Application.configureRouting() {
         userRoutes(userRepository)
         courseContentRoutes(courseRepository, courseContentRepository)
         reportRoutes(userRepository, courseRepository)
+        testRoutes(testRepository)
     }
 }

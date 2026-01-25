@@ -14,6 +14,8 @@ import io.ktor.server.routing.post
 import io.ktor.server.response.*
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
+import java.lang.IllegalArgumentException
+import java.lang.IllegalStateException
 
 fun Route.courseRoutes(courseRepository: CourseRepository, courseContentRepository: CourseContentRepository) {
     authenticate("auth-jwt") {
@@ -152,6 +154,34 @@ fun Route.courseRoutes(courseRepository: CourseRepository, courseContentReposito
             }
 
             call.respond(HttpStatusCode.Forbidden, mapOf("error" to "You do not have permission to delete this course"))
+        }
+
+        post("/courses/{id}/enroll") {
+            val courseId = call.parameters["id"]?.toIntOrNull()
+            val principal = call.principal<JWTPrincipal>()
+            val userId = principal?.payload?.subject?.toIntOrNull()
+            val role = principal?.payload?.getClaim("role")?.asString()
+
+            if (courseId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid course ID or token"))
+                return@post
+            }
+
+            if (role != "STUDENT") {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Only students can enroll in courses"))
+                return@post
+            }
+
+            try {
+                courseRepository.enrollStudent(courseId, userId)
+                call.respond(HttpStatusCode.OK, mapOf("message" to "Successfully enrolled in the course"))
+            } catch (e: IllegalStateException) {
+                call.respond(HttpStatusCode.Conflict, mapOf("error" to e.message))
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to e.message))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "An unexpected error occurred"))
+            }
         }
     }
 }
