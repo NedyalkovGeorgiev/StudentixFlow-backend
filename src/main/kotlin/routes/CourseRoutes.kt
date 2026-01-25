@@ -20,7 +20,7 @@ fun Route.courseRoutes(courseRepository: CourseRepository, courseContentReposito
         post("/courses") {
             val principal = call.principal<JWTPrincipal>()
 
-            val teacherId = principal?.payload?.subject?.toIntOrNull()
+            val userId = principal?.payload?.subject?.toIntOrNull()
 
             val role = principal?.payload?.getClaim("role")?.asString()
 
@@ -32,14 +32,15 @@ fun Route.courseRoutes(courseRepository: CourseRepository, courseContentReposito
                 return@post
             }
 
-            if (teacherId == null) {
+            if (userId == null) {
                 call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid token"))
                 return@post
             }
 
             try {
                 val request = call.receive<CourseRequest>()
-                val courseId = courseRepository.createCourse(request, teacherId)
+                var teacherId = if (role == "ADMIN") request.teacherId else null
+                val courseId = courseRepository.createCourse(request, userId, teacherId)
 
                 call.respond(HttpStatusCode.Created, mapOf("id" to courseId))
             } catch (e: Exception) {
@@ -89,10 +90,7 @@ fun Route.courseRoutes(courseRepository: CourseRepository, courseContentReposito
             val canView = when (role) {
                 "ADMIN" -> true
                 "TEACHER" -> isOwner
-                "STUDENT" -> {
-                    // Check for enrollment to be implemented
-                    false
-                }
+                "STUDENT" -> courseRepository.isStudentEnrolled(id, userId)
                 else -> false
             }
 
@@ -134,6 +132,7 @@ fun Route.courseRoutes(courseRepository: CourseRepository, courseContentReposito
 
                 if (success) {
                     call.respond(HttpStatusCode.NoContent)
+                    return@delete
                 } else {
                     call.respond(HttpStatusCode.NotFound, mapOf("error" to "Course not found"))
                     return@delete

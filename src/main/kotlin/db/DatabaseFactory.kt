@@ -21,7 +21,7 @@ object DatabaseFactory {
             this.jdbcUrl = jdbcUrl
             this.username = user
             this.password = password
-            this.maximumPoolSize = 3
+            this.maximumPoolSize = 10
             this.isAutoCommit = false
             this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
             validate()

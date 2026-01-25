@@ -21,8 +21,9 @@ fun generateToken(user: UserData, application: Application): String {
     val jwtAudience = application.environment.config.property("jwt.audience").getString()
     val jwtDomain = application.environment.config.property("jwt.domain").getString()
     val jwtSecret = application.environment.config.property("jwt.secret").getString()
+    val jwtExpirationHours = application.environment.config.propertyOrNull("jwt.expiration.hours")?.getString()?.toLongOrNull() ?: 24L
 
-    val expirationDate = Date(System.currentTimeMillis() + 24.hours.inWholeMilliseconds)
+    val expirationDate = Date(System.currentTimeMillis() + jwtExpirationHours.hours.inWholeMilliseconds)
 
     return JWT.create()
         .withAudience(jwtAudience)
