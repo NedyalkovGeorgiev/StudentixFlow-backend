@@ -136,6 +136,14 @@ class CourseContentRepository {
     suspend fun submitTest(
         testId: Int, studentId: Int, submissionRequest: TestSubmissionRequest
     ): Int = dbQuery {
+        val existingResult = TestResults.selectAll().where {
+            (TestResults.studentId eq studentId) and (TestResults.testId eq testId)
+        }.singleOrNull()
+
+        if (existingResult != null) {
+            throw IllegalStateException("You have already submitted this test.")
+        }
+
         val testRow = Tests.selectAll().where { Tests.id eq testId }.singleOrNull()
             ?: throw IllegalArgumentException("Test not found")
 

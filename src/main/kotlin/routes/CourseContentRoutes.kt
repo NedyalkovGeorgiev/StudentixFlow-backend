@@ -144,6 +144,8 @@ fun Route.courseContentRoutes(
                 val request = call.receive<TestSubmissionRequest>()
                 val score = courseContentRepository.submitTest(testId, userId, request)
                 call.respond(HttpStatusCode.OK, mapOf("message" to "Test submitted successfully", "score" to score.toString()))
+            } catch (e: IllegalStateException) {
+                call.respond(HttpStatusCode.Conflict, mapOf("error" to e.message))
             } catch (e: IllegalArgumentException) {
                 call.respond(HttpStatusCode.NotFound, mapOf("error" to e.message))
             } catch (e: Exception) {
