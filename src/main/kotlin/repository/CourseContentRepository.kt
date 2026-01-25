@@ -22,7 +22,9 @@ import kotlinx.serialization.json.Json
 import com.university.studentixflow.models.TestEditResponse
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
@@ -239,6 +241,104 @@ class CourseContentRepository {
             .join(Courses, JoinType.INNER, CourseSections.courseId, Courses.id)
             .select(Tests.id)
             .where { (Tests.id eq testId) and (Courses.teacherId eq userId) }
+            .count() > 0
+    }
+
+    /**
+     * Delete a test by ID
+     */
+    suspend fun deleteTest(testId: Int): Boolean = dbQuery {
+        Tests.deleteWhere { Tests.id eq testId } > 0
+    }
+
+    // ============================================
+    // Task Methods
+    // ============================================
+
+    /**
+     * Get task by ID
+     */
+    suspend fun getTaskById(taskId: Int): TaskResponse? = dbQuery {
+        Tasks.selectAll()
+            .where { Tasks.id eq taskId }
+            .singleOrNull()
+            ?.toTaskResponse()
+    }
+
+    /**
+     * Update an existing task
+     */
+    suspend fun updateTask(taskId: Int, request: TaskRequest): Boolean = dbQuery {
+        val updatedRows = Tasks.update({ Tasks.id eq taskId }) {
+            it[title] = request.title
+            it[description] = request.description
+            it[dueDate] = request.dueDate
+        }
+        updatedRows > 0
+    }
+
+    /**
+     * Delete a task by ID
+     */
+    suspend fun deleteTask(taskId: Int): Boolean = dbQuery {
+        Tasks.deleteWhere { Tasks.id eq taskId } > 0
+    }
+
+    /**
+     * Check if user owns the task via section -> course teacherId
+     */
+    suspend fun isTaskOwner(taskId: Int, userId: Int): Boolean = dbQuery {
+        Tasks
+            .join(CourseSections, JoinType.INNER, Tasks.sectionId, CourseSections.id)
+            .join(Courses, JoinType.INNER, CourseSections.courseId, Courses.id)
+            .select(Tasks.id)
+            .where { (Tasks.id eq taskId) and (Courses.teacherId eq userId) }
+            .count() > 0
+    }
+
+    // ============================================
+    // Material Methods
+    // ============================================
+
+    /**
+     * Get material by ID
+     */
+    suspend fun getMaterialById(materialId: Int): MaterialResponse? = dbQuery {
+        Materials.selectAll()
+            .where { Materials.id eq materialId }
+            .singleOrNull()
+            ?.toMaterialResponse()
+    }
+
+    /**
+     * Update an existing material
+     */
+    suspend fun updateMaterial(materialId: Int, request: MaterialRequest): Boolean = dbQuery {
+        val updatedRows = Materials.update({ Materials.id eq materialId }) {
+            it[title] = request.title
+            it[url] = request.url
+            it[type] = request.type
+            it[isVisible] = request.isVisible
+        }
+        updatedRows > 0
+    }
+
+    /**
+     * Delete a material by ID
+     */
+    suspend fun deleteMaterial(materialId: Int): Boolean = dbQuery {
+        Materials.deleteWhere { Materials.id eq materialId } > 0
+    }
+
+    /**
+     * Check if user owns the material via section -> course teacherId
+     */
+    suspend fun isMaterialOwner(materialId: Int, userId: Int): Boolean = dbQuery {
+        Materials
+            .join(CourseSections, JoinType.INNER, Materials.sectionId, CourseSections.id)
+            .join(Courses, JoinType.INNER, CourseSections.courseId, Courses.id)
+            .select(Materials.id)
+            .where { (Materials.id eq materialId) and (Courses.teacherId eq userId) }
             .count() > 0
     }
 }

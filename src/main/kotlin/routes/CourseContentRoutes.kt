@@ -15,6 +15,7 @@ import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
@@ -233,6 +234,212 @@ fun Route.courseContentRoutes(
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid test data: ${e.message}"))
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to update test"))
+            }
+        }
+
+        // DELETE /tests/{id} - Delete a test
+        delete("/tests/{id}") {
+            val testId = call.parameters["id"]?.toIntOrNull()
+            val userId = call.getUserId()
+            val principal = call.principal<JWTPrincipal>()
+            val role = principal?.payload?.getClaim("role")?.asString()
+
+            if (testId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid test ID or token"))
+                return@delete
+            }
+
+            val isOwner = courseContentRepository.isTestOwner(testId, userId)
+            if (role != "ADMIN" && !isOwner) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+                return@delete
+            }
+
+            val deleted = courseContentRepository.deleteTest(testId)
+            if (deleted) {
+                call.respond(HttpStatusCode.NoContent)
+            } else {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Test not found"))
+            }
+        }
+
+        // ============================================
+        // Task Endpoints
+        // ============================================
+
+        // GET /tasks/{taskId} - Get task by ID
+        get("/tasks/{taskId}") {
+            val taskId = call.parameters["taskId"]?.toIntOrNull()
+            val userId = call.getUserId()
+            val principal = call.principal<JWTPrincipal>()
+            val role = principal?.payload?.getClaim("role")?.asString()
+
+            if (taskId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid task ID or token"))
+                return@get
+            }
+
+            val isOwner = courseContentRepository.isTaskOwner(taskId, userId)
+            if (role != "ADMIN" && !isOwner) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+                return@get
+            }
+
+            val task = courseContentRepository.getTaskById(taskId)
+            if (task == null) {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Task not found"))
+                return@get
+            }
+
+            call.respond(HttpStatusCode.OK, task)
+        }
+
+        // PUT /tasks/{taskId} - Update a task
+        put("/tasks/{taskId}") {
+            val taskId = call.parameters["taskId"]?.toIntOrNull()
+            val userId = call.getUserId()
+            val principal = call.principal<JWTPrincipal>()
+            val role = principal?.payload?.getClaim("role")?.asString()
+
+            if (taskId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid task ID or token"))
+                return@put
+            }
+
+            val isOwner = courseContentRepository.isTaskOwner(taskId, userId)
+            if (role != "ADMIN" && !isOwner) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+                return@put
+            }
+
+            try {
+                val request = call.receive<TaskRequest>()
+                val updated = courseContentRepository.updateTask(taskId, request)
+                if (updated) {
+                    call.respond(HttpStatusCode.OK, mapOf("message" to "Task updated successfully"))
+                } else {
+                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "Task not found"))
+                }
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid task data: ${e.message}"))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to update task"))
+            }
+        }
+
+        // DELETE /tasks/{taskId} - Delete a task
+        delete("/tasks/{taskId}") {
+            val taskId = call.parameters["taskId"]?.toIntOrNull()
+            val userId = call.getUserId()
+            val principal = call.principal<JWTPrincipal>()
+            val role = principal?.payload?.getClaim("role")?.asString()
+
+            if (taskId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid task ID or token"))
+                return@delete
+            }
+
+            val isOwner = courseContentRepository.isTaskOwner(taskId, userId)
+            if (role != "ADMIN" && !isOwner) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+                return@delete
+            }
+
+            val deleted = courseContentRepository.deleteTask(taskId)
+            if (deleted) {
+                call.respond(HttpStatusCode.NoContent)
+            } else {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Task not found"))
+            }
+        }
+
+        // ============================================
+        // Material Endpoints
+        // ============================================
+
+        // GET /materials/{materialId} - Get material by ID
+        get("/materials/{materialId}") {
+            val materialId = call.parameters["materialId"]?.toIntOrNull()
+            val userId = call.getUserId()
+            val principal = call.principal<JWTPrincipal>()
+            val role = principal?.payload?.getClaim("role")?.asString()
+
+            if (materialId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid material ID or token"))
+                return@get
+            }
+
+            val isOwner = courseContentRepository.isMaterialOwner(materialId, userId)
+            if (role != "ADMIN" && !isOwner) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+                return@get
+            }
+
+            val material = courseContentRepository.getMaterialById(materialId)
+            if (material == null) {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Material not found"))
+                return@get
+            }
+
+            call.respond(HttpStatusCode.OK, material)
+        }
+
+        // PUT /materials/{materialId} - Update a material
+        put("/materials/{materialId}") {
+            val materialId = call.parameters["materialId"]?.toIntOrNull()
+            val userId = call.getUserId()
+            val principal = call.principal<JWTPrincipal>()
+            val role = principal?.payload?.getClaim("role")?.asString()
+
+            if (materialId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid material ID or token"))
+                return@put
+            }
+
+            val isOwner = courseContentRepository.isMaterialOwner(materialId, userId)
+            if (role != "ADMIN" && !isOwner) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+                return@put
+            }
+
+            try {
+                val request = call.receive<MaterialRequest>()
+                val updated = courseContentRepository.updateMaterial(materialId, request)
+                if (updated) {
+                    call.respond(HttpStatusCode.OK, mapOf("message" to "Material updated successfully"))
+                } else {
+                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "Material not found"))
+                }
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid material data: ${e.message}"))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to update material"))
+            }
+        }
+
+        // DELETE /materials/{materialId} - Delete a material
+        delete("/materials/{materialId}") {
+            val materialId = call.parameters["materialId"]?.toIntOrNull()
+            val userId = call.getUserId()
+            val principal = call.principal<JWTPrincipal>()
+            val role = principal?.payload?.getClaim("role")?.asString()
+
+            if (materialId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid material ID or token"))
+                return@delete
+            }
+
+            val isOwner = courseContentRepository.isMaterialOwner(materialId, userId)
+            if (role != "ADMIN" && !isOwner) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+                return@delete
+            }
+
+            val deleted = courseContentRepository.deleteMaterial(materialId)
+            if (deleted) {
+                call.respond(HttpStatusCode.NoContent)
+            } else {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Material not found"))
             }
         }
     }

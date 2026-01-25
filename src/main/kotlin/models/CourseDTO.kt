@@ -32,3 +32,13 @@ data class CourseSectionResponse(
     val description: String,
     val sortOrder: Int
 )
+
+@Serializable
+data class MoveStudentRequest(
+    val targetCourseId: Int
+)
+
+@Serializable
+data class EnrollStudentRequest(
+    val studentId: Int
+)

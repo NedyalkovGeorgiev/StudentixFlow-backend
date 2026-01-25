@@ -25,6 +25,20 @@ object RouteHelpers {
     }
 
     /**
+     * @return true if admin or teacher, false otherwise
+     */
+    suspend fun ApplicationCall.requireAdminOrTeacher(): Boolean {
+        val principal = principal<JWTPrincipal>()
+        val role = principal?.payload?.getClaim("role")?.asString()
+
+        if (role != "ADMIN" && role != "TEACHER") {
+            respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied: Admin or Teacher role required"))
+            return false
+        }
+        return true
+    }
+
+    /**
      * @return user ID or null if invalid
      */
     fun ApplicationCall.getUserId(): Int? {

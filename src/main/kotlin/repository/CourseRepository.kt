@@ -9,6 +9,7 @@ import com.university.studentixflow.db.Users
 import com.university.studentixflow.models.CourseRequest
 import com.university.studentixflow.models.CourseResponse
 import com.university.studentixflow.models.UserRole
+import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 
@@ -297,6 +298,42 @@ class CourseRepository {
                 )
             }
     }
+
+    /**
+     * Remove a student from a course (unenroll)
+     */
+    suspend fun unenrollStudent(courseId: Int, studentId: Int): Boolean = dbQuery {
+        val deletedRows = Enrollments.deleteWhere {
+            (Enrollments.courseId eq courseId) and (Enrollments.studentId eq studentId)
+        }
+        deletedRows > 0
+    }
+
+    /**
+     * Move a student from one course to another
+     * This removes them from the source course and enrolls them in the target course
+     */
+    suspend fun moveStudent(sourceCourseId: Int, targetCourseId: Int, studentId: Int): Unit = dbQuery {
+        // Remove from source course
+        Enrollments.deleteWhere {
+            (Enrollments.courseId eq sourceCourseId) and (Enrollments.studentId eq studentId)
+        }
+
+        // Check if already enrolled in target course
+        val alreadyEnrolled = Enrollments
+            .select(Enrollments.id)
+            .where { (Enrollments.studentId eq studentId) and (Enrollments.courseId eq targetCourseId) }
+            .count() > 0
+
+        if (!alreadyEnrolled) {
+            // Enroll in target course
+            Enrollments.insert {
+                it[this.studentId] = studentId
+                it[this.courseId] = targetCourseId
+                it[enrolledAt] = System.currentTimeMillis()
+            }
+        }
+    }
 }
 
 // Extended response class when you need creator info too
@@ -313,6 +350,7 @@ data class CourseWithCreatorResponse(
     val durationWeeks: Int
 )
 
+@Serializable
 data class ParticipantInfo(
     val id: Int,
     val email: String,
@@ -320,6 +358,7 @@ data class ParticipantInfo(
     val role: UserRole
 )
 
+@Serializable
 data class CourseParticipants(
     val teacher: ParticipantInfo,
     val students: List<ParticipantInfo>

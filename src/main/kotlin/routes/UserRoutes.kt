@@ -5,6 +5,7 @@ import com.university.studentixflow.models.UserResponse
 import com.university.studentixflow.repository.UserRepository
 import com.university.studentixflow.repository.UserData
 import com.university.studentixflow.routes.RouteHelpers.requireAdmin
+import com.university.studentixflow.routes.RouteHelpers.requireAdminOrTeacher
 import com.university.studentixflow.routes.RouteHelpers.getUserId
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
@@ -31,6 +32,14 @@ fun Route.userRoutes(userRepository: UserRepository) {
 
             val users = userRepository.getAllUsers()
             call.respond(HttpStatusCode.OK, users.map { it.toUserResponse() })
+        }
+
+        // Get all students (for enrollment dropdown) - ADMIN or TEACHER only
+        get("/users/students") {
+            if (!call.requireAdminOrTeacher()) return@get
+
+            val students = userRepository.getAllStudents()
+            call.respond(HttpStatusCode.OK, students.map { it.toUserResponse() })
         }
 
         delete("/users/{id}") {
