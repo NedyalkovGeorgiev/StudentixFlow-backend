@@ -17,6 +17,7 @@ object Courses : IntIdTable("courses") {
     val title = varchar("title", 200)
     val description = text("description")
     val teacherId = reference("teacher_id", Users, onDelete = ReferenceOption.RESTRICT)
+    val createdBy = reference("created_by", Users, onDelete = ReferenceOption.RESTRICT)
     val isActive = bool("is_active").default(true)
     val startDate = long("start_date")
     val durationWeeks = integer("duration_weeks")
@@ -57,7 +58,7 @@ object Tasks: IntIdTable("tasks") {
 
 object TestResults: IntIdTable("test_results") {
     val testId = reference("test_id", Tests, onDelete = ReferenceOption.CASCADE)
-    val studentId = reference("student_id", Users)
+    val studentId = reference("student_id", Users, onDelete = ReferenceOption.RESTRICT)
     val score = integer("score")
     val attemptedAt = long("attempted_at")
 }

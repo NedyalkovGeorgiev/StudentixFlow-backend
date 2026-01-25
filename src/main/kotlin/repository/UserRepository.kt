@@ -100,6 +100,14 @@ class UserRepository {
     }
 
     suspend fun getUserIsActiveStatus(userId: Int): Boolean? = dbQuery {
-        Users.select(Users.isActive).where { Users.id eq userId }.singleOrNull()?.get(Users.isActive)
+        Users.selectAll().where { Users.id eq userId }.singleOrNull()?.get(Users.isActive)
+    }
+
+    suspend fun getAllTeachers(): List<UserData> = dbQuery {
+        Users.selectAll().where { Users.role eq UserRole.TEACHER }.map { mapUserRowToUserData(it) }
+    }
+
+    suspend fun getAllStudents(): List<UserData> = dbQuery {
+        Users.selectAll().where { Users.role eq UserRole.STUDENT }.map { mapUserRowToUserData(it) }
     }
 }

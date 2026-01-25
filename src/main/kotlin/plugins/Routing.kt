@@ -7,6 +7,7 @@ import com.university.studentixflow.repository.UserRepository
 import com.university.studentixflow.routes.authenticationRoutes
 import com.university.studentixflow.routes.courseContentRoutes
 import com.university.studentixflow.routes.courseRoutes
+import com.university.studentixflow.routes.reportRoutes
 import com.university.studentixflow.routes.testRoutes
 import com.university.studentixflow.routes.userRoutes
 import io.ktor.http.*
@@ -46,6 +47,7 @@ fun Application.configureRouting() {
         courseRoutes(courseRepository, courseContentRepository)
         userRoutes(userRepository)
         courseContentRoutes(courseRepository, courseContentRepository)
+        reportRoutes(userRepository, courseRepository)
         testRoutes(testRepository)
     }
 }
