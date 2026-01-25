@@ -66,5 +66,72 @@ fun Route.testRoutes(testRepository: TestRepository, courseRepository: CourseRep
 
             call.respond(HttpStatusCode.OK, test)
         }
+
+        // Get all test results for a course (for teachers/admins)
+        get("/courses/{courseId}/results") {
+            val principal = call.principal<JWTPrincipal>()
+            val userId = principal?.payload?.subject?.toIntOrNull()
+
+            if (userId == null) {
+                call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid token"))
+                return@get
+            }
+
+            val courseId = call.parameters["courseId"]?.toIntOrNull()
+            if (courseId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid course ID"))
+                return@get
+            }
+
+            // Check authorization: must be admin or course owner
+            val role = principal.payload.getClaim("role")?.asString()
+            val isAdmin = role == "ADMIN"
+            val isOwner = courseRepository.isCourseOwner(courseId, userId)
+
+            if (!isAdmin && !isOwner) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "You don't have permission to view these results"))
+                return@get
+            }
+
+            val results = testRepository.getResultsForCourse(courseId)
+            call.respond(HttpStatusCode.OK, results)
+        }
+
+        // Get all results for a specific test (for teachers/admins)
+        get("/tests/{testId}/results") {
+            val principal = call.principal<JWTPrincipal>()
+            val userId = principal?.payload?.subject?.toIntOrNull()
+
+            if (userId == null) {
+                call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid token"))
+                return@get
+            }
+
+            val testId = call.parameters["testId"]?.toIntOrNull()
+            if (testId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid test ID"))
+                return@get
+            }
+
+            // Get course ID for this test to check authorization
+            val courseId = testRepository.getCourseIdForTest(testId)
+            if (courseId == null) {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Test not found"))
+                return@get
+            }
+
+            // Check authorization: must be admin or course owner
+            val role = principal.payload.getClaim("role")?.asString()
+            val isAdmin = role == "ADMIN"
+            val isOwner = courseRepository.isCourseOwner(courseId, userId)
+
+            if (!isAdmin && !isOwner) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "You don't have permission to view these results"))
+                return@get
+            }
+
+            val results = testRepository.getResultsForTest(testId)
+            call.respond(HttpStatusCode.OK, results)
+        }
     }
 }

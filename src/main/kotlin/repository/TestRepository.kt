@@ -5,6 +5,7 @@ import com.university.studentixflow.db.Courses
 import com.university.studentixflow.db.DatabaseFactory.dbQuery
 import com.university.studentixflow.db.TestResults
 import com.university.studentixflow.db.Tests
+import com.university.studentixflow.db.Users
 import com.university.studentixflow.models.Question
 import com.university.studentixflow.models.QuestionForStudent
 import com.university.studentixflow.models.TestForTakingResponse
@@ -22,6 +23,19 @@ data class TestResultResponse(
     val courseTitle: String,
     val score: Int,
     val maxScore: Int,
+    val attemptedAt: Long
+)
+
+@Serializable
+data class StudentTestResultResponse(
+    val studentId: Int,
+    val studentName: String,
+    val studentEmail: String,
+    val testId: Int,
+    val testTitle: String,
+    val score: Int,
+    val maxScore: Int,
+    val percentage: Int,
     val attemptedAt: Long
 )
 
@@ -95,5 +109,80 @@ class TestRepository {
             .select(CourseSections.courseId)
             .where { Tests.id eq testId }
             .singleOrNull()?.get(CourseSections.courseId)?.value
+    }
+
+    /**
+     * Get all test results for a course (for teachers/admins viewing student results)
+     * Joins: TestResults -> Tests -> CourseSections -> Users (for student info)
+     */
+    suspend fun getResultsForCourse(courseId: Int): List<StudentTestResultResponse> = dbQuery {
+        TestResults
+            .join(Tests, JoinType.INNER, TestResults.testId, Tests.id)
+            .join(CourseSections, JoinType.INNER, Tests.sectionId, CourseSections.id)
+            .join(Users, JoinType.INNER, TestResults.studentId, Users.id)
+            .select(
+                TestResults.studentId,
+                TestResults.testId,
+                TestResults.score,
+                TestResults.attemptedAt,
+                Tests.title,
+                Tests.maxScore,
+                Users.fullName,
+                Users.email
+            )
+            .where { CourseSections.courseId eq courseId }
+            .map { row ->
+                val score = row[TestResults.score]
+                val maxScore = row[Tests.maxScore]
+                val percentage = if (maxScore > 0) (score * 100) / maxScore else 0
+                StudentTestResultResponse(
+                    studentId = row[TestResults.studentId].value,
+                    studentName = row[Users.fullName],
+                    studentEmail = row[Users.email],
+                    testId = row[TestResults.testId].value,
+                    testTitle = row[Tests.title],
+                    score = score,
+                    maxScore = maxScore,
+                    percentage = percentage,
+                    attemptedAt = row[TestResults.attemptedAt]
+                )
+            }
+    }
+
+    /**
+     * Get all results for a specific test (for teachers/admins viewing student results)
+     * Joins: TestResults -> Tests -> Users (for student info)
+     */
+    suspend fun getResultsForTest(testId: Int): List<StudentTestResultResponse> = dbQuery {
+        TestResults
+            .join(Tests, JoinType.INNER, TestResults.testId, Tests.id)
+            .join(Users, JoinType.INNER, TestResults.studentId, Users.id)
+            .select(
+                TestResults.studentId,
+                TestResults.testId,
+                TestResults.score,
+                TestResults.attemptedAt,
+                Tests.title,
+                Tests.maxScore,
+                Users.fullName,
+                Users.email
+            )
+            .where { TestResults.testId eq testId }
+            .map { row ->
+                val score = row[TestResults.score]
+                val maxScore = row[Tests.maxScore]
+                val percentage = if (maxScore > 0) (score * 100) / maxScore else 0
+                StudentTestResultResponse(
+                    studentId = row[TestResults.studentId].value,
+                    studentName = row[Users.fullName],
+                    studentEmail = row[Users.email],
+                    testId = row[TestResults.testId].value,
+                    testTitle = row[Tests.title],
+                    score = score,
+                    maxScore = maxScore,
+                    percentage = percentage,
+                    attemptedAt = row[TestResults.attemptedAt]
+                )
+            }
     }
 }
