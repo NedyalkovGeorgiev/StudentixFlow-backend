@@ -2,27 +2,31 @@ package com.university.studentixflow.repository
 
 import com.university.studentixflow.db.CourseSections
 import com.university.studentixflow.db.Courses
-import com.university.studentixflow.models.SectionRequest
 import com.university.studentixflow.db.DatabaseFactory.dbQuery
 import com.university.studentixflow.db.Materials
 import com.university.studentixflow.db.Tasks
 import com.university.studentixflow.db.TestResults
+import com.university.studentixflow.db.Tests
 import com.university.studentixflow.models.MaterialRequest
+import com.university.studentixflow.models.MaterialResponse
+import com.university.studentixflow.models.Question
+import com.university.studentixflow.models.SectionRequest
 import com.university.studentixflow.models.SectionResponse
 import com.university.studentixflow.models.SectionWithContentResponse
 import com.university.studentixflow.models.TaskRequest
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.selectAll
-import com.university.studentixflow.models.MaterialResponse
 import com.university.studentixflow.models.TaskResponse
 import com.university.studentixflow.models.TestRequest
-import kotlinx.serialization.json.Json
-import com.university.studentixflow.db.Tests
-import com.university.studentixflow.models.Question
 import com.university.studentixflow.models.TestSubmissionRequest
+import com.university.studentixflow.models.TestSummaryResponse
+import kotlinx.serialization.json.Json
+import com.university.studentixflow.models.TestEditResponse
+import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
 
 class CourseContentRepository {
     suspend fun createSection(courseId: Int, request: SectionRequest): Int = dbQuery {
@@ -55,9 +59,15 @@ class CourseContentRepository {
         }.value
     }
 
+    /**
+     * Check if user owns the section via course teacherId
+     * Explicit join: CourseSections -> Courses (via courseId)
+     */
     suspend fun isSectionOwner(sectionId: Int, userId: Int): Boolean = dbQuery {
-        (CourseSections innerJoin Courses)
-            .selectAll().where { (CourseSections.id eq sectionId) and (Courses.teacherId eq userId) }
+        CourseSections
+            .join(Courses, JoinType.INNER, CourseSections.courseId, Courses.id)
+            .select(CourseSections.id)
+            .where { (CourseSections.id eq sectionId) and (Courses.teacherId eq userId) }
             .count() > 0
     }
 
@@ -82,6 +92,11 @@ class CourseContentRepository {
             .map { it.toMaterialResponse() }
             .groupBy { it.sectionId }
 
+        val testsBySectionId = Tests.selectAll()
+            .where { Tests.sectionId inList sectionIds }
+            .map { it.toTestSummaryResponse() }
+            .groupBy { it.sectionId }
+
         sections.map { sectionData ->
             SectionWithContentResponse(
                 id = sectionData.id,
@@ -92,10 +107,18 @@ class CourseContentRepository {
                 url = sectionData.url,
                 sortOrder = sectionData.sortOrder,
                 tasks = taskBySectionId[sectionData.id] ?: emptyList(),
-                materials = materialBySectionId[sectionData.id] ?: emptyList()
+                materials = materialBySectionId[sectionData.id] ?: emptyList(),
+                tests = testsBySectionId[sectionData.id] ?: emptyList()
             )
         }
     }
+
+    private fun ResultRow.toTestSummaryResponse(): TestSummaryResponse = TestSummaryResponse(
+        id = this[Tests.id].value,
+        sectionId = this[Tests.sectionId].value,
+        title = this[Tests.title],
+        maxScore = this[Tests.maxScore]
+    )
 
     private fun ResultRow.toSectionResponse(): SectionResponse = SectionResponse(
         id = this[CourseSections.id].value,
@@ -174,5 +197,48 @@ class CourseContentRepository {
         }
 
         score
+    }
+
+    /**
+     * Get test with full question data for editing (includes correctOptionIndex)
+     */
+    suspend fun getTestForEditing(testId: Int): TestEditResponse? = dbQuery {
+        val testRow = Tests.selectAll()
+            .where { Tests.id eq testId }
+            .singleOrNull() ?: return@dbQuery null
+
+        val questions = Json.decodeFromString<List<Question>>(testRow[Tests.contentJson])
+
+        TestEditResponse(
+            id = testRow[Tests.id].value,
+            sectionId = testRow[Tests.sectionId].value,
+            title = testRow[Tests.title],
+            maxScore = testRow[Tests.maxScore],
+            questions = questions
+        )
+    }
+
+    /**
+     * Update an existing test
+     */
+    suspend fun updateTest(testId: Int, request: TestRequest): Boolean = dbQuery {
+        val updatedRows = Tests.update({ Tests.id eq testId }) {
+            it[title] = request.title
+            it[maxScore] = request.maxScore
+            it[contentJson] = Json.encodeToString(request.questions)
+        }
+        updatedRows > 0
+    }
+
+    /**
+     * Check if user owns the test via section -> course teacherId
+     */
+    suspend fun isTestOwner(testId: Int, userId: Int): Boolean = dbQuery {
+        Tests
+            .join(CourseSections, JoinType.INNER, Tests.sectionId, CourseSections.id)
+            .join(Courses, JoinType.INNER, CourseSections.courseId, Courses.id)
+            .select(Tests.id)
+            .where { (Tests.id eq testId) and (Courses.teacherId eq userId) }
+            .count() > 0
     }
 }

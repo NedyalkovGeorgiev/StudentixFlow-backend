@@ -1,13 +1,18 @@
 package com.university.studentixflow.repository
 
+import com.university.studentixflow.db.CourseSections
 import com.university.studentixflow.db.Courses
-import kotlinx.serialization.Serializable
 import com.university.studentixflow.db.DatabaseFactory.dbQuery
 import com.university.studentixflow.db.TestResults
 import com.university.studentixflow.db.Tests
+import com.university.studentixflow.models.Question
+import com.university.studentixflow.models.QuestionForStudent
+import com.university.studentixflow.models.TestForTakingResponse
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.selectAll
-import com.university.studentixflow.db.CourseSections
 
 @Serializable
 data class TestResultResponse(
@@ -21,9 +26,26 @@ data class TestResultResponse(
 )
 
 class TestRepository {
+    /**
+     * Get test results for a student with explicit join chain:
+     * TestResults -> Tests (via testId)
+     * Tests -> CourseSections (via sectionId)
+     * CourseSections -> Courses (via courseId)
+     */
     suspend fun getResultsForStudent(studentId: Int): List<TestResultResponse> = dbQuery {
-        (TestResults innerJoin Tests innerJoin CourseSections innerJoin Courses)
-            .selectAll()
+        TestResults
+            .join(Tests, JoinType.INNER, TestResults.testId, Tests.id)
+            .join(CourseSections, JoinType.INNER, Tests.sectionId, CourseSections.id)
+            .join(Courses, JoinType.INNER, CourseSections.courseId, Courses.id)
+            .select(
+                TestResults.testId,
+                TestResults.score,
+                TestResults.attemptedAt,
+                Tests.title,
+                Tests.maxScore,
+                Courses.id,
+                Courses.title
+            )
             .where { TestResults.studentId eq studentId }
             .map { it.toTestResultResponse() }
     }
@@ -37,4 +59,41 @@ class TestRepository {
         maxScore = this[Tests.maxScore],
         attemptedAt = this[TestResults.attemptedAt]
     )
+
+    /**
+     * Get test for student taking - questions WITHOUT correct answers
+     */
+    suspend fun getTestForTaking(testId: Int): TestForTakingResponse? = dbQuery {
+        val testRow = Tests.selectAll()
+            .where { Tests.id eq testId }
+            .singleOrNull() ?: return@dbQuery null
+
+        val questions = Json.decodeFromString<List<Question>>(testRow[Tests.contentJson])
+
+        // Strip correct answers from questions
+        val questionsForStudent = questions.map { q ->
+            QuestionForStudent(
+                text = q.text,
+                options = q.options
+            )
+        }
+
+        TestForTakingResponse(
+            id = testRow[Tests.id].value,
+            title = testRow[Tests.title],
+            maxScore = testRow[Tests.maxScore],
+            questions = questionsForStudent
+        )
+    }
+
+    /**
+     * Get the course ID for a specific test
+     */
+    suspend fun getCourseIdForTest(testId: Int): Int? = dbQuery {
+        Tests
+            .join(CourseSections, JoinType.INNER, Tests.sectionId, CourseSections.id)
+            .select(CourseSections.courseId)
+            .where { Tests.id eq testId }
+            .singleOrNull()?.get(CourseSections.courseId)?.value
+    }
 }

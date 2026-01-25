@@ -48,6 +48,6 @@ fun Application.configureRouting() {
         userRoutes(userRepository)
         courseContentRoutes(courseRepository, courseContentRepository)
         reportRoutes(userRepository, courseRepository)
-        testRoutes(testRepository)
+        testRoutes(testRepository, courseRepository)
     }
 }

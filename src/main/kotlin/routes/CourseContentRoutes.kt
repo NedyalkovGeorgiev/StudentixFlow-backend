@@ -15,7 +15,9 @@ import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import io.ktor.server.routing.put
 import io.ktor.server.response.respond
 import java.lang.IllegalArgumentException
 
@@ -171,6 +173,66 @@ fun Route.courseContentRoutes(
                 call.respond(HttpStatusCode.NotFound, mapOf("error" to e.message))
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid submission format", "details" to e.message))
+            }
+        }
+
+        // GET /tests/{id}/edit - Get test data for editing (with correct answers)
+        get("/tests/{id}/edit") {
+            val testId = call.parameters["id"]?.toIntOrNull()
+            val userId = call.getUserId()
+            val principal = call.principal<JWTPrincipal>()
+            val role = principal?.payload?.getClaim("role")?.asString()
+
+            if (testId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid test ID or token"))
+                return@get
+            }
+
+            val isOwner = courseContentRepository.isTestOwner(testId, userId)
+            if (role != "ADMIN" && !isOwner) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+                return@get
+            }
+
+            val test = courseContentRepository.getTestForEditing(testId)
+            if (test == null) {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Test not found"))
+                return@get
+            }
+
+            call.respond(HttpStatusCode.OK, test)
+        }
+
+        // PUT /tests/{id} - Update an existing test
+        put("/tests/{id}") {
+            val testId = call.parameters["id"]?.toIntOrNull()
+            val userId = call.getUserId()
+            val principal = call.principal<JWTPrincipal>()
+            val role = principal?.payload?.getClaim("role")?.asString()
+
+            if (testId == null || userId == null) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid test ID or token"))
+                return@put
+            }
+
+            val isOwner = courseContentRepository.isTestOwner(testId, userId)
+            if (role != "ADMIN" && !isOwner) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+                return@put
+            }
+
+            try {
+                val request = call.receive<TestRequest>()
+                val updated = courseContentRepository.updateTest(testId, request)
+                if (updated) {
+                    call.respond(HttpStatusCode.OK, mapOf("message" to "Test updated successfully"))
+                } else {
+                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "Test not found"))
+                }
+            } catch (e: IllegalArgumentException) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid test data: ${e.message}"))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to update test"))
             }
         }
     }

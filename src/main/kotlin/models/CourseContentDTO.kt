@@ -75,7 +75,8 @@ data class SectionWithContentResponse(
     val url: String?,
     val sortOrder: Int,
     val tasks: List<TaskResponse>,
-    val materials: List<MaterialResponse>
+    val materials: List<MaterialResponse>,
+    val tests: List<TestSummaryResponse> = emptyList()
 )
 
 @Serializable

@@ -156,6 +156,20 @@ fun Route.courseRoutes(courseRepository: CourseRepository, courseContentReposito
             call.respond(HttpStatusCode.Forbidden, mapOf("error" to "You do not have permission to delete this course"))
         }
 
+        get("/courses/available") {
+            val principal = call.principal<JWTPrincipal>()
+            val userId = principal?.payload?.subject?.toIntOrNull()
+
+            if (userId == null) {
+                call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid token"))
+                return@get
+            }
+
+            // Return all active courses (for enrollment browsing)
+            val courses = courseRepository.getAllCourses().filter { it.isActive }
+            call.respond(HttpStatusCode.OK, courses)
+        }
+
         post("/courses/{id}/enroll") {
             val courseId = call.parameters["id"]?.toIntOrNull()
             val principal = call.principal<JWTPrincipal>()
